@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101b2c">
+  <title>2WD Basic — Android micro:bit Controller</title>
+  <style>
+    :root {color-scheme:dark;--bg:#101b2c;--panel:#1c2e45;--line:#3c5b7a;--accent:#64d6ff;--text:#eef6ff}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:system-ui,Arial,sans-serif;color:var(--text)}
+    main{max-width:480px;padding:22px;margin:auto}h1{margin:0;font-size:27px}p{line-height:1.5;color:#b8cbe0}
+    #status{margin:12px 0;padding:10px;background:var(--panel);border-radius:10px;font-weight:700}
+    button{color:var(--text);border:2px solid var(--line);background:var(--panel);font-weight:800;border-radius:14px;cursor:pointer}
+    button:disabled{opacity:.5}#connect{font-size:17px;width:100%;padding:16px;margin:8px 0 20px;background:#155c82}
+    #pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;grid-template-rows:90px 90px 90px}
+    .dir{font-size:32px;touch-action:none;user-select:none;-webkit-user-select:none}
+    .dir.active{background:#167fa9;border-color:var(--accent)}
+    [data-cmd=F]{grid-area:1/2}[data-cmd=L]{grid-area:2/1}[data-cmd=R]{grid-area:2/3}[data-cmd=B]{grid-area:3/2}
+    #stop{grid-area:2/2;font-size:15px;background:#8d2444;border-color:#e05f7f}
+    #log{font-size:15px;font-weight:800;text-align:center;letter-spacing:.04em;padding:15px}
+    .note{font-size:13px}
+  </style>
+</head>
+<body><main>
+  <h1>2WD BASIC <span style="color:var(--accent)">V1</span></h1>
+  <p>Android / Bluetooth LE. Tests the micro:bit LED only. Motors are intentionally disabled in this firmware.</p>
+  <div id="status">Not connected</div>
+  <button id="connect" type="button">Connect to micro:bit</button>
+  <div id="pad">
+    <button class="dir" data-cmd="F" type="button" aria-label="Forward">▲</button>
+    <button class="dir" data-cmd="L" type="button" aria-label="Left">◀</button>
+    <button id="stop" type="button">STOP</button>
+    <button class="dir" data-cmd="R" type="button" aria-label="Right">▶</button>
+    <button class="dir" data-cmd="B" type="button" aria-label="Reverse">▼</button>
+  </div>
+  <div id="log">STOP</div>
+  <p class="note">Hold an arrow: the same arrow should appear on the micro:bit LEDs. Release: a square appears. Requires Android Chrome and HTTPS hosting (such as GitHub Pages). Not compatible with opening a local HTML file.</p>
+</main>
+<script>
+'use strict';
+const SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+// Verified against the micro:bit BLE profile: 003 is the micro:bit UART RX, writable by phone.
+const RX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+const el = id => document.getElementById(id);
+const encoder = new TextEncoder();
+let device = null, characteristic = null, holding = 'S', busy = false;
+let activeButton = null;
+function status(t) { el('status').textContent = t; }
+function setDirection(d) {
+  holding = d;
+  el('log').textContent = ({F:'FORWARD',B:'BACKWARD',L:'LEFT',R:'RIGHT',S:'STOP'})[d];
+  document.querySelectorAll('.dir').forEach(b=>b.classList.toggle('active',b.dataset.cmd===d));
+}
+function disconnected() {
+  characteristic = null;
+  activeButton = null;
+  setDirection('S');
+  status('Disconnected');
+}
+async function send() {
+  if (!characteristic || busy) return;
+  busy = true;
+  try {
+    const bytes = encoder.encode(holding+'\n');
+    if(characteristic.writeValueWithResponse) await characteristic.writeValueWithResponse(bytes);
+    else await characteristic.writeValue(bytes);
+  } catch(e) {
+    status('Bluetooth write failed: '+e.message);
+    setDirection('S');
+  } finally { busy=false; }
+}
+async function connect() {
+  if(!navigator.bluetooth) {
+    status('Web Bluetooth unavailable. Use Android Chrome on an HTTPS page.');
+    return;
+  }
+  el('connect').disabled=true;
+  try {
+    device = await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SERVICE]});
+    device.addEventListener('gattserverdisconnected', disconnected);
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE);
+    characteristic = await service.getCharacteristic(RX);
+    setDirection('S');
+    status('Connected — test the directional arrows');
+    await send();
+  } catch(e) {
+    disconnected();
+    status('Connection failed: '+e.message);
+  } finally {el('connect').disabled=false;}
+}
+el('connect').addEventListener('click', connect);
+for(const b of document.querySelectorAll('.dir')) {
+  b.addEventListener('pointerdown', ev => {
+    ev.preventDefault();
+    if(!characteristic) return;
+    if(activeButton) setDirection('S');
+    activeButton = b;
+    b.setPointerCapture(ev.pointerId);
+    setDirection(b.dataset.cmd);
+    send();
+  });
+  const release = () => {
+    if(activeButton===b) {
+      activeButton=null;
+      setDirection('S');
+      send();
+    }
+  };
+  b.addEventListener('pointerup', release);
+  b.addEventListener('pointercancel', release);
+  b.addEventListener('lostpointercapture', release);
+}
+el('stop').addEventListener('click',()=>{activeButton=null;setDirection('S');send();});
+window.addEventListener('blur',()=>{activeButton=null;setDirection('S');send();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){activeButton=null;setDirection('S');send();}});
+setInterval(send,150);
+</script></body></html>
