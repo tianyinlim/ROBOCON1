@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#071120">
+  <meta name="description" content="ROBOCON1 landscape Android Bluetooth racing controller for a BBC micro:bit 2WD car.">
+  <title>ROBOCON1 · Landscape Race Controller</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg:#071120; --panel:#10233a; --panel-hi:#152d4a; --edge:#2a4866;
+      --text:#eef6ff; --muted:#9fb5cc; --cyan:#36cfff; --cyan-2:#a2eeff;
+      --green:#66e6b3; --red:#fa5874; --red-bg:#7c2541; --yellow:#ffc978;
+    }
+    * { box-sizing:border-box; }
+    html, body { margin:0; width:100%; min-height:100%; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+    html { -webkit-text-size-adjust:100%; }
+    body { overflow-x:hidden; background:radial-gradient(ellipse at 50% -20%,#183651 0%,var(--bg) 62%); color:var(--text); }
+    button, input { font:inherit; }
+    button { color:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    button:focus-visible, input:focus-visible { outline:3px solid var(--cyan); outline-offset:3px; }
+    .app { min-height:100dvh; display:flex; flex-direction:column; max-width:1400px; margin:auto; padding:calc(8px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left)); gap:8px; }
+    .topbar { display:flex; align-items:center; gap:10px; min-height:50px; }
+    .mark { display:grid; place-items:center; flex:none; width:44px; height:44px; border-radius:12px; border:1px solid #2687b8; background:linear-gradient(140deg,#187eae,#153557); font-size:17px; font-weight:950; letter-spacing:-.04em; }
+    .brand { min-width:0; flex:1; }
+    .brand h1 { font-size:clamp(16px,2.5vw,24px); line-height:1.1; letter-spacing:-.045em; margin:0; white-space:nowrap; }
+    .brand p { font-size:10px; margin:4px 0 0; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:750; white-space:nowrap; }
+    .dot { width:8px; height:8px; background:#7790a9; border-radius:50%; display:inline-block; flex:none; }
+    .dot.online { background:var(--green); box-shadow:0 0 0 4px #66e6b32a; }
+    .status { display:flex; align-items:center; gap:7px; background:#12273c; border:1px solid #28445e; padding:7px 10px; border-radius:11px; color:var(--muted); font-size:11px; font-weight:850; white-space:nowrap; }
+    .actions { display:flex; gap:7px; flex:none; }
+    .action { background:#1a3550; border:1px solid #345475; border-radius:10px; padding:10px 12px; font-size:11px; min-height:40px; font-weight:900; letter-spacing:.02em; white-space:nowrap; }
+    #connect { background:#136a92; border-color:#2a9bca; }
+    #arm.armed { color:#08291f; background:var(--green); border-color:var(--green); }
+    .hud { display:flex; align-items:center; gap:12px; min-height:34px; border:1px solid #24425d; background:#0e1f32; border-radius:10px; padding:5px 12px; }
+    .hud-item { display:flex; align-items:center; gap:7px; min-width:0; font-size:11px; }
+    .hud-item .k { color:var(--muted); text-transform:uppercase; letter-spacing:.10em; font-size:10px; font-weight:850; }
+    .hud-item strong { font-size:13px; font-weight:950; }
+    #currentCommand { color:var(--red); }
+    #currentCommand.moving { color:var(--cyan); }
+    #connectionMessage { margin-left:auto; color:var(--muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:41%; text-align:right; }
+    .dashboard { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1.08fr) minmax(210px,.88fr) minmax(0,1.08fr); gap:10px; }
+    .zone { background:linear-gradient(155deg,#152a44,#102036); border:1px solid var(--edge); border-radius:17px; padding:11px; min-width:0; min-height:0; display:flex; flex-direction:column; gap:8px; box-shadow:inset 0 1px 0 #ffffff08; }
+    .zone-label { color:#a8c9e0; font-size:11px; font-weight:950; letter-spacing:.15em; text-transform:uppercase; display:flex; align-items:center; justify-content:space-between; min-height:18px; }
+    .zone-label span { color:#5c809d; font-size:10px; }
+    .steering-pad { display:grid; grid-template-columns:1fr 1fr; gap:9px; flex:1; min-height:0; }
+    .throttle-pad { display:grid; grid-template-rows:1fr 1fr; gap:9px; flex:1; min-height:0; }
+    .drive { border:1.5px solid #477394; border-radius:16px; color:var(--text); background:linear-gradient(135deg,#294c6a,#1a3552); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:7px; min-height:70px; min-width:0; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+    .drive .arrow { font-size:clamp(30px,5vw,56px); font-weight:950; line-height:1; }
+    .drive .name { font-size:clamp(10px,1.3vw,13px); font-weight:900; letter-spacing:.06em; }
+    .drive.pressed { color:#042039; background:linear-gradient(140deg,#68e1ff,#28afe4); border-color:#bbf3ff; box-shadow:inset 0 0 0 2px #c8faff70; transform:scale(.985); }
+    .drive.pressed .name { color:#09334c; }
+    .middle .stop { flex:1; min-height:85px; width:100%; background:linear-gradient(145deg,#b43859,#72233e); border:2px solid #ff8199; border-radius:17px; color:#fff; font-size:clamp(23px,3vw,33px); letter-spacing:.06em; font-weight:1000; touch-action:manipulation; }
+    .middle .stop:active { background:#d74769; }
+    .speed-panel { background:#071829; padding:10px 12px 8px; border:1px solid #27465f; border-radius:12px; }
+    .speed-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; font-size:10px; font-weight:850; text-transform:uppercase; color:var(--muted); letter-spacing:.1em; }
+    #speedOutput { font-size:19px; font-weight:950; color:var(--cyan); letter-spacing:0; }
+    #speed { display:block; width:100%; margin:11px 0 5px; accent-color:var(--cyan); cursor:pointer; touch-action:pan-x; }
+    .speed-scale { display:flex; justify-content:space-between; font-size:9px; color:#7895b2; font-weight:800; }
+    .foot { font-size:10px; line-height:1.25; color:var(--muted); display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:14px; }
+    .foot .safety { color:#efb6c2; }
+    .rotate-hint { display:none; color:#ffdd9e; background:#352e1e; border:1px solid #766036; padding:10px; border-radius:12px; text-align:center; font-size:13px; font-weight:800; }
+    @media (orientation:landscape) and (max-height:560px) {
+      .app { gap:6px; }
+      .topbar { min-height:42px; }
+      .mark { width:39px; height:39px; }
+      .hud { min-height:28px; }
+      .zone { padding:9px; gap:5px; border-radius:14px; }
+      .zone-label { min-height:14px; font-size:10px; }
+      .middle .stop { min-height:68px; }
+      .speed-panel { padding:7px 9px 5px; }
+      #speed { margin:7px 0 4px; }
+      .drive .arrow { font-size:clamp(27px,6vh,49px); }
+      .drive { min-height:52px; }
+      .drive .name { font-size:11px; }
+      .foot { font-size:9px; }
+    }
+    @media (orientation:portrait) {
+      .app { max-width:620px; gap:12px; min-height:100dvh; padding:14px; }
+      .topbar { flex-wrap:wrap; }
+      .brand h1 { font-size:21px; }
+      .actions { width:100%; display:grid; grid-template-columns:repeat(3,1fr); }
+      .status { margin-left:auto; }
+      .rotate-hint { display:block; }
+      .dashboard { grid-template-columns:1fr; grid-template-rows:minmax(170px,1fr) minmax(200px,1fr) minmax(190px,1fr); }
+      .zone { min-height:160px; }
+      .middle .stop { min-height:85px; }
+      .hud { flex-wrap:wrap; }
+      #connectionMessage { max-width:100%; margin-left:0; }
+    }
+    @media (max-width:650px) and (orientation:landscape) {
+      .brand p { display:none; }
+      .status { display:none; }
+      .brand h1 { font-size:16px; }
+      .action { padding:7px; min-height:35px; font-size:10px; }
+      .dashboard { grid-template-columns:1fr .95fr 1fr; gap:6px; }
+      .zone { padding:7px; }
+      .drive .name { font-size:9px; }
+      .hud { padding:3px 8px; }
+      #connectionMessage { font-size:10px; }
+      .foot { display:none; }
+    }
+    @media (prefers-reduced-motion:no-preference) { .drive, .action { transition:background .08s ease,transform .08s ease; } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="mark" aria-hidden="true">R1</div>
+    <div class="brand">
+      <h1>ROBOCON1 <span style="color:var(--cyan)">RACE CONTROL</span></h1>
+      <p>2WD / Android / micro:bit Bluetooth UART</p>
+    </div>
+    <div class="status" id="connectionStatus"><span id="statusDot" class="dot"></span><span id="statusText">OFFLINE</span></div>
+    <nav class="actions" aria-label="Connection and view controls">
+      <button id="connect" class="action" type="button">CONNECT</button>
+      <button id="arm" class="action" type="button" disabled>ENABLE DRIVE</button>
+      <button id="fullscreen" class="action" type="button">LANDSCAPE ⤢</button>
+    </nav>
+  </header>
+  <div id="rotateHint" class="rotate-hint">↻ Rotate your phone sideways for the full-size landscape controller. Enable Auto-rotate if needed.</div>
+  <div class="hud" aria-live="polite">
+    <div class="hud-item"><span class="k">COMMAND</span><strong id="currentCommand">STOP</strong></div>
+    <div class="hud-item"><span class="k">SPEED</span><strong id="hudSpeed">40%</strong></div>
+    <span id="connectionMessage">Connect your micro:bit, then enable driving.</span>
+  </div>
+  <main class="dashboard" aria-label="Driving controls">
+    <section class="zone" aria-label="Steering">
+      <div class="zone-label">STEERING <span>LEFT THUMB</span></div>
+      <div class="steering-pad">
+        <button class="drive" data-command="L" type="button" aria-label="Turn left" disabled><span class="arrow">◀</span><span class="name">LEFT</span></button>
+        <button class="drive" data-command="R" type="button" aria-label="Turn right" disabled><span class="arrow">▶</span><span class="name">RIGHT</span></button>
+      </div>
+    </section>
+    <section class="zone middle" aria-label="Stop and speed">
+      <div class="zone-label">SAFETY <span>STOP ON RELEASE</span></div>
+      <button id="stop" class="stop" type="button" disabled>■ STOP</button>
+      <div class="speed-panel">
+        <div class="speed-head"><label for="speed">MOTOR SPEED</label><output id="speedOutput" for="speed">40%</output></div>
+        <input id="speed" type="range" min="0" max="100" step="5" value="40" aria-label="Motor speed percent" disabled>
+        <div class="speed-scale"><span>0%</span><span>50%</span><span>100%</span></div>
+      </div>
+    </section>
+    <section class="zone" aria-label="Throttle">
+      <div class="zone-label">THROTTLE <span>RIGHT THUMB</span></div>
+      <div class="throttle-pad">
+        <button class="drive" data-command="F" type="button" aria-label="Forward" disabled><span class="arrow">▲</span><span class="name">FORWARD</span></button>
+        <button class="drive" data-command="B" type="button" aria-label="Reverse" disabled><span class="arrow">▼</span><span class="name">REVERSE</span></button>
+      </div>
+    </section>
+  </main>
+  <footer class="foot"><span>Hold a direction → move · Release → STOP · Last pressed direction takes priority if two are held</span><span class="safety">Software STOP is not a physical power cutoff.</span></footer>
+</div>
+<script>
+(() => {
+  'use strict';
+  // Exactly the same micro:bit Bluetooth UART UUIDs and command format as the working controller.
+  const SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+  const RX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+  const HEARTBEAT_MS = 240; // Firmware watchdog is 800 ms in the supplied Blocks version.
+  const LABELS = { F:'FORWARD', B:'REVERSE', L:'LEFT', R:'RIGHT', S:'STOP' };
+  const encoder = new TextEncoder();
+  const $ = id => document.getElementById(id);
+  const driveButtons = Array.from(document.querySelectorAll('[data-command]'));
+
+  let device = null;
+  let tx = null;
+  let connecting = false;
+  let armed = false;
+  let activeDirection = 'S';
+  const activePointers = new Map();
+  let pressOrder = 0;
+  let speed = 40;
+
+  // Single-writer BLE queue: STOP is never replaced by a later direction or slider update.
+  let writeBusy = false;
+  let stopPending = false;
+  let directionPending = null;
+  let speedPending = null;
+  let session = 0;
+
+  function connected() { return !!(tx && device && device.gatt && device.gatt.connected); }
+  function info(message) { $('connectionMessage').textContent = message; }
+  function draw() {
+    $('statusDot').classList.toggle('online', connected());
+    $('statusText').textContent = connecting ? 'PAIRING…' : connected() ? 'CONNECTED' : 'OFFLINE';
+    $('connect').textContent = connected() ? 'DISCONNECT' : connecting ? 'CONNECTING…' : 'CONNECT';
+    $('connect').disabled = connecting;
+    $('arm').disabled = !connected();
+    $('arm').classList.toggle('armed', connected() && armed);
+    $('arm').textContent = armed ? 'LOCK DRIVE' : 'ENABLE DRIVE';
+    $('stop').disabled = !connected();
+    $('speed').disabled = !connected();
+    driveButtons.forEach(button => {
+      button.disabled = !(connected() && armed);
+      button.classList.toggle('pressed', connected() && armed && activeDirection !== 'S' && button.dataset.command === activeDirection);
+    });
+    $('currentCommand').textContent = LABELS[activeDirection];
+    $('currentCommand').classList.toggle('moving', activeDirection !== 'S');
+    $('speedOutput').textContent = speed + '%';
+    $('hudSpeed').textContent = speed + '%';
+  }
+  async function writeUART(command) {
+    const data = encoder.encode(command + '\n');
+    if (tx.properties.writeWithoutResponse && typeof tx.writeValueWithoutResponse === 'function') {
+      await tx.writeValueWithoutResponse(data);
+    } else if (typeof tx.writeValueWithResponse === 'function') {
+      await tx.writeValueWithResponse(data);
+    } else {
+      await tx.writeValue(data);
+    }
+  }
+  async function pump() {
+    if (writeBusy || !connected()) return;
+    writeBusy = true;
+    const epoch = session;
+    try {
+      while (connected() && session === epoch && (stopPending || directionPending !== null || speedPending !== null)) {
+        let command;
+        if (stopPending) {
+          command = 'S'; stopPending = false;
+        } else if (directionPending !== null) {
+          command = directionPending; directionPending = null;
+        } else {
+          command = speedPending; speedPending = null;
+        }
+        await writeUART(command);
+      }
+    } catch (err) {
+      if (epoch === session) {
+        armed = false;
+        activePointers.clear();
+        activeDirection = 'S';
+        stopPending = false;
+        directionPending = null;
+        speedPending = null;
+        info('Bluetooth write failed. Controls locked; reconnect and re-enable.');
+        draw();
+        // A failed BLE write cannot guarantee a STOP packet. Trigger the on-device connection-loss failsafe.
+        if (device && device.gatt && device.gatt.connected) device.gatt.disconnect();
+      }
+    } finally { writeBusy = false; }
+  }
+  function sendStop() {
+    activePointers.clear();
+    activeDirection = 'S';
+    directionPending = null;
+    stopPending = true;
+    draw();
+    pump();
+  }
+  function setDirection(command) {
+    if (!connected() || !armed) return;
+    if (activeDirection === command) return;
+    activeDirection = command;
+    if (command === 'S') {
+      directionPending = null;
+      stopPending = true;
+    } else {
+      directionPending = command;
+    }
+    draw();
+    pump();
+  }
+  function refreshPointers() {
+    if (activePointers.size === 0) { setDirection('S'); return; }
+    let newest = null;
+    activePointers.forEach(value => { if (!newest || value.order > newest.order) newest = value; });
+    setDirection(newest.command);
+  }
+  function sendSpeed() {
+    if (!connected()) return;
+    speedPending = 'V' + speed;
+    pump();
+  }
+  function onDisconnected() {
+    session++;
+    tx = null;
+    device = null;
+    connecting = false;
+    armed = false;
+    activePointers.clear();
+    activeDirection = 'S';
+    directionPending = null;
+    speedPending = null;
+    stopPending = false;
+    info('Disconnected — reconnect to drive.');
+    draw();
+  }
+  async function connect() {
+    if (connecting) return;
+    if (connected()) {
+      sendStop();
+      // Disconnect after attempting to issue STOP; firmware must also stop on BLE loss.
+      await new Promise(resolve => setTimeout(resolve, 120));
+      if (device && device.gatt && device.gatt.connected) device.gatt.disconnect();
+      return;
+    }
+    if (!window.isSecureContext || !navigator.bluetooth) {
+      info('Web Bluetooth requires Android Chrome on HTTPS (GitHub Pages).');
+      return;
+    }
+    connecting = true;
+    info('Select your micro:bit in the Bluetooth device list.');
+    draw();
+    try {
+      const nextDevice = await navigator.bluetooth.requestDevice({acceptAllDevices:true, optionalServices:[SERVICE]});
+      nextDevice.addEventListener('gattserverdisconnected', onDisconnected);
+      const server = await nextDevice.gatt.connect();
+      const service = await server.getPrimaryService(SERVICE);
+      const characteristic = await service.getCharacteristic(RX);
+      device = nextDevice;
+      tx = characteristic;
+      session++;
+      armed = false;
+      activeDirection = 'S';
+      stopPending = true;
+      speedPending = 'V' + speed;
+      info('Connected. Tap ENABLE DRIVE, then hold a direction.');
+      draw();
+      pump();
+    } catch (err) {
+      info('Connection failed: ' + (err && err.message ? err.message : String(err)));
+      onDisconnected();
+    } finally { connecting = false; draw(); }
+  }
+  $('connect').addEventListener('click', connect);
+  $('arm').addEventListener('click', () => {
+    if (!connected()) return;
+    if (armed) {
+      armed = false;
+      sendStop();
+      info('Drive locked. Tap ENABLE DRIVE to resume.');
+    } else {
+      armed = true;
+      sendStop();
+      info('Driving enabled. Hold a direction; release to stop.');
+    }
+    draw();
+  });
+  driveButtons.forEach(button => {
+    button.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      if (!connected() || !armed) return;
+      try { button.setPointerCapture(event.pointerId); } catch (_) {}
+      activePointers.set(event.pointerId, {command:button.dataset.command, order:++pressOrder});
+      refreshPointers();
+    });
+    const release = event => {
+      if (activePointers.delete(event.pointerId)) refreshPointers();
+    };
+    button.addEventListener('pointerup', release);
+    button.addEventListener('pointercancel', release);
+    button.addEventListener('lostpointercapture', release);
+  });
+  $('stop').addEventListener('pointerdown', event => { event.preventDefault(); sendStop(); });
+  $('stop').addEventListener('click', sendStop);
+  $('speed').addEventListener('input', event => {
+    speed = Math.max(0, Math.min(100, Number(event.target.value)));
+    draw();
+  });
+  // Send only once the slider is released, avoiding high-rate BLE floods.
+  $('speed').addEventListener('change', sendSpeed);
+  setInterval(() => {
+    if (connected() && armed && activeDirection !== 'S' && !document.hidden) {
+      directionPending = activeDirection;
+      pump();
+    }
+  }, HEARTBEAT_MS);
+  window.addEventListener('blur', () => { if (connected()) sendStop(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && connected()) sendStop(); });
+  window.addEventListener('pagehide', () => { if (connected()) sendStop(); });
+  $('fullscreen').addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock('landscape');
+      } else {
+        info('Rotate your phone sideways; orientation locking is not supported by this browser.');
+      }
+    } catch (_) {
+      info('Rotate your phone sideways and enable Auto-rotate. Landscape lock is unavailable here.');
+    }
+  });
+  draw();
+})();
+</script>
+</body>
+</html>
