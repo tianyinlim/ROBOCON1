@@ -1,118 +1,308 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#101b2c">
-  <title>2WD Basic — Android micro:bit Controller</title>
+  <meta name="theme-color" content="#0b1220">
+  <meta name="description" content="Basic Android Bluetooth controller for BBC micro:bit 2WD robot. Hold to drive, release to stop.">
+  <title>ROBOCON 1 | micro:bit 2WD Controller</title>
   <style>
-    :root {color-scheme:dark;--bg:#101b2c;--panel:#1c2e45;--line:#3c5b7a;--accent:#64d6ff;--text:#eef6ff}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:system-ui,Arial,sans-serif;color:var(--text)}
-    main{max-width:480px;padding:22px;margin:auto}h1{margin:0;font-size:27px}p{line-height:1.5;color:#b8cbe0}
-    #status{margin:12px 0;padding:10px;background:var(--panel);border-radius:10px;font-weight:700}
-    button{color:var(--text);border:2px solid var(--line);background:var(--panel);font-weight:800;border-radius:14px;cursor:pointer}
-    button:disabled{opacity:.5}#connect{font-size:17px;width:100%;padding:16px;margin:8px 0 20px;background:#155c82}
-    #pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;grid-template-rows:90px 90px 90px}
-    .dir{font-size:32px;touch-action:none;user-select:none;-webkit-user-select:none}
-    .dir.active{background:#167fa9;border-color:var(--accent)}
-    [data-cmd=F]{grid-area:1/2}[data-cmd=L]{grid-area:2/1}[data-cmd=R]{grid-area:2/3}[data-cmd=B]{grid-area:3/2}
-    #stop{grid-area:2/2;font-size:15px;background:#8d2444;border-color:#e05f7f}
-    #log{font-size:15px;font-weight:800;text-align:center;letter-spacing:.04em;padding:15px}
-    .note{font-size:13px}
+    :root {
+      color-scheme: dark;
+      --bg:#090f1c; --surface:#121e31; --surface2:#192942;
+      --border:#29405d; --text:#eff6ff; --muted:#a1b4ce;
+      --accent:#42d0ff; --accent-dim:#126486; --good:#58e1ae;
+      --warning:#ffd478; --danger:#ff657a; --danger-bg:#6a2539;
+      --radius:19px;
+    }
+    * { box-sizing:border-box; }
+    html { -webkit-text-size-adjust:100%; }
+    body { margin:0; min-height:100vh; min-height:100dvh; background:radial-gradient(ellipse at 50% -20%, #1b3553 0%, var(--bg) 65%); color:var(--text); font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button { font:inherit; -webkit-tap-highlight-color:transparent; }
+    main { max-width:520px; padding:clamp(14px,4vw,24px); padding-top:calc(20px + env(safe-area-inset-top)); padding-bottom:calc(24px + env(safe-area-inset-bottom)); margin:0 auto; }
+    .eyebrow { display:flex; align-items:center; gap:8px; color:var(--accent); font-weight:750; font-size:12px; letter-spacing:.15em; text-transform:uppercase; }
+    .logo-dot { display:inline-block; height:11px; width:11px; border:2px solid var(--accent); border-radius:4px; transform:rotate(45deg); }
+    h1 { font-size:clamp(28px,8vw,39px); line-height:1.09; letter-spacing:-.04em; margin:12px 0 8px; }
+    .subhead { margin:0 0 18px; color:var(--muted); font-size:14px; line-height:1.5; }
+    .panel { border:1px solid var(--border); background:var(--surface); box-shadow:0 12px 34px #0002; border-radius:var(--radius); padding:16px; margin:12px 0; }
+    .status-top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .label { color:var(--muted); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; }
+    .status-pill { display:inline-flex; align-items:center; gap:8px; color:var(--muted); padding:7px 11px; background:#23344b; border:1px solid var(--border); border-radius:999px; font-weight:750; font-size:12px; white-space:nowrap; }
+    .status-pill::before { content:""; width:8px; height:8px; background:#8392a4; border-radius:50%; }
+    .status-pill.connected { color:var(--good); border-color:#2e6858; background:#17362e; }
+    .status-pill.connected::before { background:var(--good); box-shadow:0 0 0 3px #58e1ae20; }
+    .status-pill.connecting { color:var(--warning); }
+    .status-pill.connecting::before { background:var(--warning); }
+    #connectionInfo { min-height:38px; display:flex; align-items:center; margin:6px 0 12px; font-size:14px; color:var(--muted); line-height:1.45; overflow-wrap:anywhere; }
+    .connect-row { display:grid; grid-template-columns:1fr auto; gap:9px; }
+    .connect-button, .disconnect-button, .arm-button { min-height:50px; border:1px solid var(--border); border-radius:13px; color:var(--text); font-weight:800; padding:10px 12px; }
+    .connect-button { background:linear-gradient(135deg,#147fa4,#155e89); border-color:#288fba; }
+    .disconnect-button { background:var(--surface2); }
+    .arm-button { background:var(--surface2); width:100%; margin-top:11px; min-height:46px; }
+    .arm-button.armed { border-color:#39785c; color:var(--good); background:#18382d; }
+    button:disabled { cursor:not-allowed; opacity:.43; }
+    button:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+    .drive-panel { padding:16px 14px 20px; }
+    .panel-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:13px; }
+    h2 { font-size:16px; font-weight:800; margin:0; }
+    .smalltag { font-size:11px; color:var(--muted); background:#253751; padding:6px 9px; border-radius:999px; white-space:nowrap; }
+    .command { display:flex; align-items:center; justify-content:space-between; gap:12px; background:#0b1626; border:1px solid #263952; border-radius:13px; padding:12px 14px; margin-bottom:16px; }
+    .command strong { font-size:19px; letter-spacing:.06em; }
+    .command strong.active-motion { color:var(--accent); }
+    .command strong.stop { color:var(--danger); }
+    .dpad { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(3,minmax(74px, min(22vw,100px))); gap:10px; max-width:410px; margin:0 auto; touch-action:manipulation; }
+    .drive { color:var(--text); background:linear-gradient(160deg,#2a4261,#182a43); border:1.5px solid #476586; border-radius:17px; font-size:32px; font-weight:850; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; min-width:0; }
+    .drive .dir-name { display:block; color:#c9d9ee; font-size:11px; letter-spacing:.04em; font-weight:800; margin-top:3px; }
+    .drive.pressed { color:#071321; background:var(--accent); border-color:#85e4ff; transform:scale(.98); box-shadow:0 0 0 4px #42d0ff26; }
+    .drive.pressed .dir-name { color:#12354a; }
+    [data-direction="F"] { grid-area:1/2; }
+    [data-direction="L"] { grid-area:2/1; }
+    [data-direction="R"] { grid-area:2/3; }
+    [data-direction="B"] { grid-area:3/2; }
+    .stop-button { grid-area:2/2; background:linear-gradient(160deg,#9e2d48,var(--danger-bg)); border:2px solid #f07c8b; border-radius:18px; color:#fff; font-size:17px; font-weight:900; letter-spacing:.09em; touch-action:manipulation; }
+    .stop-button:active { background:#ca3655; }
+    .hint { color:var(--muted); text-align:center; line-height:1.5; font-size:12px; margin:14px auto 0; }
+    .notice { margin-top:14px; border-left:3px solid var(--warning); padding:11px 12px; border-radius:0 10px 10px 0; background:#322b20; color:#f7ddb0; font-size:12px; line-height:1.5; }
+    .notice strong { color:#ffdd91; }
+    .foot { color:#8da3bd; font-size:11px; line-height:1.55; margin:16px 2px; }
+    #feedback { min-height:20px; color:var(--muted); font-size:12px; margin-top:9px; }
+    @media (max-width:380px) { .dpad { grid-template-rows:repeat(3,74px); gap:8px; } .panel { padding:13px; } .drive { font-size:27px; } }
+    @media (prefers-reduced-motion:no-preference) { .drive,.status-pill,.arm-button { transition:background .12s ease, transform .12s ease, border-color .12s ease; } }
   </style>
 </head>
-<body><main>
-  <h1>2WD BASIC <span style="color:var(--accent)">V1</span></h1>
-  <p>Android / Bluetooth LE. Tests the micro:bit LED only. Motors are intentionally disabled in this firmware.</p>
-  <div id="status">Not connected</div>
-  <button id="connect" type="button">Connect to micro:bit</button>
-  <div id="pad">
-    <button class="dir" data-cmd="F" type="button" aria-label="Forward">▲</button>
-    <button class="dir" data-cmd="L" type="button" aria-label="Left">◀</button>
-    <button id="stop" type="button">STOP</button>
-    <button class="dir" data-cmd="R" type="button" aria-label="Right">▶</button>
-    <button class="dir" data-cmd="B" type="button" aria-label="Reverse">▼</button>
-  </div>
-  <div id="log">STOP</div>
-  <p class="note">Hold an arrow: the same arrow should appear on the micro:bit LEDs. Release: a square appears. Requires Android Chrome and HTTPS hosting (such as GitHub Pages). Not compatible with opening a local HTML file.</p>
+<body>
+<main>
+  <div class="eyebrow"><span class="logo-dot" aria-hidden="true"></span> ROBOCON 1 / BASIC CONTROL</div>
+  <h1>2WD Smart Car <span style="color:var(--accent)">Controller</span></h1>
+  <p class="subhead">Android Chrome · Bluetooth Low Energy · BBC micro:bit</p>
+
+  <section class="panel" aria-label="Bluetooth connection">
+    <div class="status-top">
+      <span class="label">Bluetooth connection</span>
+      <span id="statusPill" class="status-pill" role="status" aria-live="polite">Disconnected</span>
+    </div>
+    <div id="connectionInfo" aria-live="polite">Connect to your micro:bit to begin the control test.</div>
+    <div class="connect-row">
+      <button id="connectButton" class="connect-button" type="button">Connect micro:bit</button>
+      <button id="disconnectButton" class="disconnect-button" type="button" disabled>Disconnect</button>
+    </div>
+    <button id="armButton" class="arm-button" type="button" disabled>Enable controls</button>
+    <div id="feedback" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="panel drive-panel" aria-label="Driving controls">
+    <div class="panel-heading">
+      <h2>Direction pad</h2>
+      <span class="smalltag">Hold to command</span>
+    </div>
+    <div class="command">
+      <span class="label">Current command</span>
+      <strong id="commandLabel" class="stop" aria-live="polite">STOP</strong>
+    </div>
+    <div class="dpad" id="dpad">
+      <button class="drive" data-direction="F" aria-label="Forward" type="button" disabled>▲<span class="dir-name">FORWARD</span></button>
+      <button class="drive" data-direction="L" aria-label="Left" type="button" disabled>◀<span class="dir-name">LEFT</span></button>
+      <button class="stop-button" id="stopButton" type="button" disabled>STOP</button>
+      <button class="drive" data-direction="R" aria-label="Right" type="button" disabled>▶<span class="dir-name">RIGHT</span></button>
+      <button class="drive" data-direction="B" aria-label="Backward" type="button" disabled>▼<span class="dir-name">REVERSE</span></button>
+    </div>
+    <p class="hint">Hold a direction button. Release to send STOP. Tap STOP at any time to cancel the current command.</p>
+    <div class="notice"><strong>Hardware test:</strong> With the current Basic V1 micro:bit firmware, these commands display arrows on the micro:bit LEDs only. Motor movement is disabled until the ROBOSCHOOL driver wiring and control pins are verified.</div>
+  </section>
+
+  <p class="foot">Requires Android Chrome and an HTTPS address (GitHub Pages works). Leave the official micro:bit app disconnected while using this controller. Bluetooth disconnection, lost touch, or switching away from the page resets the controller to STOP. The micro:bit must independently stop on a lost connection or missing commands.</p>
 </main>
 <script>
-'use strict';
-const SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-// Verified against the micro:bit BLE profile: 003 is the micro:bit UART RX, writable by phone.
-const RX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
-const el = id => document.getElementById(id);
-const encoder = new TextEncoder();
-let device = null, characteristic = null, holding = 'S', busy = false;
-let activeButton = null;
-function status(t) { el('status').textContent = t; }
-function setDirection(d) {
-  holding = d;
-  el('log').textContent = ({F:'FORWARD',B:'BACKWARD',L:'LEFT',R:'RIGHT',S:'STOP'})[d];
-  document.querySelectorAll('.dir').forEach(b=>b.classList.toggle('active',b.dataset.cmd===d));
-}
-function disconnected() {
-  characteristic = null;
-  activeButton = null;
-  setDirection('S');
-  status('Disconnected');
-}
-async function send() {
-  if (!characteristic || busy) return;
-  busy = true;
-  try {
-    const bytes = encoder.encode(holding+'\n');
-    if(characteristic.writeValueWithResponse) await characteristic.writeValueWithResponse(bytes);
-    else await characteristic.writeValue(bytes);
-  } catch(e) {
-    status('Bluetooth write failed: '+e.message);
-    setDirection('S');
-  } finally { busy=false; }
-}
-async function connect() {
-  if(!navigator.bluetooth) {
-    status('Web Bluetooth unavailable. Use Android Chrome on an HTTPS page.');
-    return;
+(() => {
+  'use strict';
+  // BBC micro:bit Bluetooth UART service. Phone writes to the micro:bit's RX characteristic.
+  const UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+  const UART_RX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+  const COMMAND_NAMES = { F:'FORWARD', B:'REVERSE', L:'LEFT', R:'RIGHT', S:'STOP' };
+  const HEARTBEAT_MS = 180; // Basic V1 micro:bit expects repeated commands (<700 ms watchdog).
+  const encoder = new TextEncoder();
+  const $ = id => document.getElementById(id);
+  const directions = Array.from(document.querySelectorAll('[data-direction]'));
+
+  let device = null;
+  let characteristic = null;
+  let connecting = false;
+  let armed = false;
+  let command = 'S';
+  let activeButton = null;
+  let activePointer = null;
+  let writeBusy = false;
+  let writePending = false;
+  let bleSession = 0;
+  let heartbeatTimer = null;
+
+  function connected() { return Boolean(characteristic && device && device.gatt && device.gatt.connected); }
+  function feedback(text) { $('feedback').textContent = text || ''; }
+  function connectionStatus(state, info) {
+    $('statusPill').className = 'status-pill' + (state === 'connected' ? ' connected' : state === 'connecting' ? ' connecting' : '');
+    $('statusPill').textContent = state === 'connected' ? 'Connected' : state === 'connecting' ? 'Connecting…' : 'Disconnected';
+    $('connectionInfo').textContent = info;
+    $('connectButton').disabled = connecting || connected();
+    $('disconnectButton').disabled = !connected();
   }
-  el('connect').disabled=true;
-  try {
-    device = await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SERVICE]});
-    device.addEventListener('gattserverdisconnected', disconnected);
-    const server = await device.gatt.connect();
-    const service = await server.getPrimaryService(SERVICE);
-    characteristic = await service.getCharacteristic(RX);
-    setDirection('S');
-    status('Connected — test the directional arrows');
-    await send();
-  } catch(e) {
-    disconnected();
-    status('Connection failed: '+e.message);
-  } finally {el('connect').disabled=false;}
-}
-el('connect').addEventListener('click', connect);
-for(const b of document.querySelectorAll('.dir')) {
-  b.addEventListener('pointerdown', ev => {
-    ev.preventDefault();
-    if(!characteristic) return;
-    if(activeButton) setDirection('S');
-    activeButton = b;
-    b.setPointerCapture(ev.pointerId);
-    setDirection(b.dataset.cmd);
-    send();
-  });
-  const release = () => {
-    if(activeButton===b) {
-      activeButton=null;
-      setDirection('S');
-      send();
+  function render() {
+    const ready = connected() && armed;
+    $('armButton').disabled = !connected();
+    $('armButton').classList.toggle('armed', ready);
+    $('armButton').textContent = ready ? 'Controls enabled · Tap to lock' : 'Enable controls';
+    $('stopButton').disabled = !connected();
+    directions.forEach(b => {
+      b.disabled = !ready;
+      b.classList.toggle('pressed', command !== 'S' && activeButton === b);
+    });
+    $('commandLabel').textContent = COMMAND_NAMES[command];
+    $('commandLabel').className = command === 'S' ? 'stop' : 'active-motion';
+  }
+  function setCommand(next, forceSend = true) {
+    command = COMMAND_NAMES[next] ? next : 'S';
+    render();
+    if (forceSend) scheduleWrite();
+  }
+  function clearPointer() {
+    if (activeButton && activePointer !== null && activeButton.hasPointerCapture && activeButton.hasPointerCapture(activePointer)) {
+      try { activeButton.releasePointerCapture(activePointer); } catch (_) {}
     }
-  };
-  b.addEventListener('pointerup', release);
-  b.addEventListener('pointercancel', release);
-  b.addEventListener('lostpointercapture', release);
-}
-el('stop').addEventListener('click',()=>{activeButton=null;setDirection('S');send();});
-window.addEventListener('blur',()=>{activeButton=null;setDirection('S');send();});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){activeButton=null;setDirection('S');send();}});
-setInterval(send,150);
-</script></body></html>
+    activeButton = null;
+    activePointer = null;
+  }
+  function stop({ lock = false } = {}) {
+    clearPointer();
+    if (lock) armed = false;
+    setCommand('S');
+  }
+  function resetLink() {
+    bleSession += 1;
+    if (heartbeatTimer !== null) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    characteristic = null;
+    device = null;
+    connecting = false;
+    armed = false;
+    clearPointer();
+    command = 'S';
+    writePending = false;
+    connectionStatus('disconnected', 'Not connected to a micro:bit.');
+    render();
+  }
+  function onDisconnected() {
+    resetLink();
+    feedback('Bluetooth disconnected. Commands stopped.');
+  }
+
+  // Latest-command-wins send queue; avoids losing STOP when a prior BLE write is in flight.
+  async function scheduleWrite() {
+    if (!connected()) return;
+    writePending = true;
+    if (writeBusy) return;
+    writeBusy = true;
+    const session = bleSession;
+    try {
+      while (writePending && connected() && session === bleSession) {
+        writePending = false;
+        const outgoing = command + '\n';
+        const bytes = encoder.encode(outgoing);
+        if (typeof characteristic.writeValueWithResponse === 'function') {
+          await characteristic.writeValueWithResponse(bytes);
+        } else {
+          await characteristic.writeValue(bytes);
+        }
+      }
+    } catch (error) {
+      if (session === bleSession) {
+        clearPointer();
+        armed = false;
+        command = 'S';
+        render();
+        feedback('Bluetooth write failed: ' + (error.message || String(error)) + '. Controls locked.');
+        // Send STOP if possible; the on-device watchdog must protect against link failure.
+        writePending = true;
+      }
+    } finally {
+      writeBusy = false;
+    }
+  }
+
+  async function connect() {
+    if (connecting || connected()) return;
+    if (!window.isSecureContext || !navigator.bluetooth) {
+      feedback('Web Bluetooth unavailable. Open the GitHub Pages HTTPS site in Android Chrome.');
+      return;
+    }
+    connecting = true;
+    feedback('');
+    connectionStatus('connecting', 'Select your micro:bit in the Bluetooth picker.');
+    try {
+      const selected = await navigator.bluetooth.requestDevice({ acceptAllDevices:true, optionalServices:[UART_SERVICE] });
+      device = selected;
+      device.addEventListener('gattserverdisconnected', onDisconnected);
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(UART_SERVICE);
+      characteristic = await service.getCharacteristic(UART_RX);
+      connecting = false;
+      armed = false;
+      command = 'S';
+      connectionStatus('connected', (device.name || 'BBC micro:bit') + ' is connected. Tap “Enable controls”.');
+      render();
+      await scheduleWrite();
+      heartbeatTimer = setInterval(() => { if (connected()) scheduleWrite(); }, HEARTBEAT_MS);
+      feedback('Ready for the LED command test.');
+    } catch (error) {
+      if (device && device.gatt && device.gatt.connected) {
+        try { device.gatt.disconnect(); } catch (_) {}
+      }
+      resetLink();
+      feedback((error && error.name === 'NotFoundError') ? 'Connection cancelled.' : 'Connection failed: ' + (error.message || String(error)));
+    }
+  }
+
+  $('connectButton').addEventListener('click', connect);
+  $('disconnectButton').addEventListener('click', () => {
+    stop({ lock:true });
+    if (device && device.gatt && device.gatt.connected) device.gatt.disconnect();
+    else resetLink();
+  });
+  $('armButton').addEventListener('click', () => {
+    if (!connected()) return;
+    if (armed) stop({ lock:true });
+    else { armed = true; setCommand('S'); }
+    render();
+  });
+  $('stopButton').addEventListener('pointerdown', event => {
+    event.preventDefault();
+    if (connected()) stop();
+  });
+  $('stopButton').addEventListener('click', () => { if (connected()) stop(); });
+
+  for (const button of directions) {
+    button.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      if (!connected() || !armed || activeButton) return;
+      activeButton = button;
+      activePointer = event.pointerId;
+      try { button.setPointerCapture(event.pointerId); } catch (_) {}
+      setCommand(button.dataset.direction);
+    });
+    const release = event => {
+      if (activeButton !== button) return;
+      if (event.pointerId !== undefined && event.pointerId !== activePointer) return;
+      stop();
+    };
+    button.addEventListener('pointerup', release);
+    button.addEventListener('pointercancel', release);
+    button.addEventListener('lostpointercapture', release);
+  }
+  window.addEventListener('blur', () => stop({ lock:true }));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stop({ lock:true }); });
+  window.addEventListener('pagehide', () => stop({ lock:true }));
+  document.addEventListener('contextmenu', event => { if (event.target.closest('.dpad')) event.preventDefault(); });
+
+  resetLink();
+  if (!window.isSecureContext || !navigator.bluetooth) feedback('Open this page in Android Chrome using HTTPS to enable Bluetooth.');
+})();
+</script>
+</body>
+</html>
